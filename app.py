@@ -1,14 +1,14 @@
 import streamlit as st
 import os
+
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 
 # ----------------------------
-# CONFIG (use environment variable)
+# CONFIG
 # ----------------------------
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
@@ -32,7 +32,7 @@ def split_documents(documents):
 
 
 def create_vectorstore(chunks):
-    embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+    embeddings = OpenAIEmbeddings(api_key=OPENAI_API_KEY)
     vectorstore = FAISS.from_documents(chunks, embeddings)
     return vectorstore
 
@@ -40,9 +40,9 @@ def create_vectorstore(chunks):
 def create_qa_chain(vectorstore):
     retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
     llm = ChatOpenAI(
-        model_name="gpt-4o-mini",
+        model="gpt-4o-mini",
         temperature=0,
-        openai_api_key=OPENAI_API_KEY
+        api_key=OPENAI_API_KEY
     )
     qa = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
     return qa
@@ -54,8 +54,8 @@ def create_qa_chain(vectorstore):
 st.title("📄 Resume RAG Chatbot")
 
 uploaded_files = st.file_uploader(
-    "Upload Resumes (PDF)", 
-    type=["pdf"], 
+    "Upload Resumes (PDF)",
+    type=["pdf"],
     accept_multiple_files=True
 )
 
