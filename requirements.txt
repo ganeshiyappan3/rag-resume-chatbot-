@@ -2,9 +2,9 @@ streamlit
 langchain
 langchain-community
 langchain-text-splitters
-langchain-openai
 langchain-core
-openai
+sentence-transformers
 faiss-cpu
 pypdf
 tiktoken
+huggingface-hub
