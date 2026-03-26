@@ -1,12 +1,13 @@
 import streamlit as st
 import os
 
+# Updated LangChain imports
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.llms import HuggingFaceHub
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.llms import HuggingFaceHub
 
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains.retrieval import create_retrieval_chain
@@ -32,7 +33,10 @@ def load_documents(uploaded_files):
 
 
 def split_documents(documents):
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=50
+    )
     return splitter.split_documents(documents)
 
 
@@ -73,7 +77,7 @@ Question:
 # STREAMLIT UI
 # ----------------------------
 
-st.title("📄 Resume RAG Chatbot (FREE VERSION)")
+st.title("📄 Resume RAG Chatbot (FREE Version)")
 
 uploaded_files = st.file_uploader(
     "Upload Resumes (PDF)",
@@ -92,11 +96,15 @@ if uploaded_files:
             st.session_state["vectorstore"] = vectorstore
         st.success("Resumes processed!")
 
-query = st.text_input("Ask about candidates")
+query = st.text_input("Ask about candidates (e.g., Python developer, 5 years experience)")
 
 if query and "vectorstore" in st.session_state:
-    qa_chain = create_qa_chain(st.session_state["vectorstore"])
-    response = qa_chain.invoke({"input": query})
+    try:
+        qa_chain = create_qa_chain(st.session_state["vectorstore"])
+        response = qa_chain.invoke({"input": query})
 
-    st.write("### Answer:")
-    st.write(response["answer"])
+        st.write("### Answer:")
+        st.write(response["answer"])
+
+    except Exception as e:
+        st.error("Error: Check your HuggingFace API key or model access.")
