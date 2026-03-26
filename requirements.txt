@@ -1,10 +1,7 @@
 streamlit
-langchain
 langchain-community
 langchain-text-splitters
-langchain-core
 sentence-transformers
 faiss-cpu
 pypdf
-tiktoken
 huggingface-hub
