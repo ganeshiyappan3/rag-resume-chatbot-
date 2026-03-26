@@ -1,11 +1,15 @@
 import streamlit as st
 import os
 
+# LangChain updated imports
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain.chains import RetrievalQA
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.chains.retrieval import create_retrieval_chain
+from langchain_core.prompts import ChatPromptTemplate
 
 # ----------------------------
 # CONFIG
@@ -27,7 +31,10 @@ def load_documents(uploaded_files):
 
 
 def split_documents(documents):
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=50
+    )
     return splitter.split_documents(documents)
 
 
@@ -39,13 +46,29 @@ def create_vectorstore(chunks):
 
 def create_qa_chain(vectorstore):
     retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
+
     llm = ChatOpenAI(
         model="gpt-4o-mini",
         temperature=0,
         api_key=OPENAI_API_KEY
     )
-    qa = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
-    return qa
+
+    prompt = ChatPromptTemplate.from_template(
+        """Answer the question based only on the provided context.
+
+Context:
+{context}
+
+Question:
+{input}
+"""
+    )
+
+    document_chain = create_stuff_documents_chain(llm, prompt)
+    qa_chain = create_retrieval_chain(retriever, document_chain)
+
+    return qa_chain
+
 
 # ----------------------------
 # STREAMLIT UI
@@ -76,6 +99,7 @@ query = st.text_input(
 
 if query and "vectorstore" in st.session_state:
     qa_chain = create_qa_chain(st.session_state["vectorstore"])
-    response = qa_chain.run(query)
+    response = qa_chain.invoke({"input": query})
+
     st.write("### Answer:")
-    st.write(response)
+    st.write(response["answer"])
