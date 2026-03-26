@@ -4,4 +4,5 @@ langchain-text-splitters
 sentence-transformers
 faiss-cpu
 pypdf
-huggingface-hub
+transformers
+torch
