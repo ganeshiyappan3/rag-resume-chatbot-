@@ -1,11 +1,12 @@
 import streamlit as st
 import os
 
-# LangChain updated imports
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.llms import HuggingFaceHub
 
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains.retrieval import create_retrieval_chain
@@ -14,7 +15,7 @@ from langchain_core.prompts import ChatPromptTemplate
 # ----------------------------
 # CONFIG
 # ----------------------------
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 
 # ----------------------------
 # FUNCTIONS
@@ -31,15 +32,14 @@ def load_documents(uploaded_files):
 
 
 def split_documents(documents):
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=50
-    )
+    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     return splitter.split_documents(documents)
 
 
 def create_vectorstore(chunks):
-    embeddings = OpenAIEmbeddings(api_key=OPENAI_API_KEY)
+    embeddings = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    )
     vectorstore = FAISS.from_documents(chunks, embeddings)
     return vectorstore
 
@@ -47,10 +47,9 @@ def create_vectorstore(chunks):
 def create_qa_chain(vectorstore):
     retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
 
-    llm = ChatOpenAI(
-        model="gpt-4o-mini",
-        temperature=0,
-        api_key=OPENAI_API_KEY
+    llm = HuggingFaceHub(
+        repo_id="google/flan-t5-base",
+        huggingfacehub_api_token=HUGGINGFACE_API_KEY
     )
 
     prompt = ChatPromptTemplate.from_template(
@@ -74,7 +73,7 @@ Question:
 # STREAMLIT UI
 # ----------------------------
 
-st.title("📄 Resume RAG Chatbot")
+st.title("📄 Resume RAG Chatbot (FREE VERSION)")
 
 uploaded_files = st.file_uploader(
     "Upload Resumes (PDF)",
@@ -93,9 +92,7 @@ if uploaded_files:
             st.session_state["vectorstore"] = vectorstore
         st.success("Resumes processed!")
 
-query = st.text_input(
-    "Ask about candidates (e.g., 'Find Python developers with 5 years experience')"
-)
+query = st.text_input("Ask about candidates")
 
 if query and "vectorstore" in st.session_state:
     qa_chain = create_qa_chain(st.session_state["vectorstore"])
