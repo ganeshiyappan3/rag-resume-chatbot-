@@ -1,17 +1,12 @@
 import streamlit as st
 import os
 
-# Updated LangChain imports
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.llms import HuggingFaceHub
-
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain.chains.retrieval import create_retrieval_chain
-from langchain_core.prompts import ChatPromptTemplate
 
 # ----------------------------
 # CONFIG
@@ -48,29 +43,29 @@ def create_vectorstore(chunks):
     return vectorstore
 
 
-def create_qa_chain(vectorstore):
+def generate_answer(vectorstore, query):
     retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
+    docs = retriever.get_relevant_documents(query)
+
+    context = "\n\n".join([doc.page_content for doc in docs])
 
     llm = HuggingFaceHub(
         repo_id="google/flan-t5-base",
         huggingfacehub_api_token=HUGGINGFACE_API_KEY
     )
 
-    prompt = ChatPromptTemplate.from_template(
-        """Answer the question based only on the provided context.
+    prompt = f"""
+Answer the question based on the context below.
 
 Context:
 {context}
 
 Question:
-{input}
+{query}
 """
-    )
 
-    document_chain = create_stuff_documents_chain(llm, prompt)
-    qa_chain = create_retrieval_chain(retriever, document_chain)
-
-    return qa_chain
+    response = llm.invoke(prompt)
+    return response
 
 
 # ----------------------------
@@ -96,15 +91,13 @@ if uploaded_files:
             st.session_state["vectorstore"] = vectorstore
         st.success("Resumes processed!")
 
-query = st.text_input("Ask about candidates (e.g., Python developer, 5 years experience)")
+query = st.text_input("Ask about candidates")
 
 if query and "vectorstore" in st.session_state:
     try:
-        qa_chain = create_qa_chain(st.session_state["vectorstore"])
-        response = qa_chain.invoke({"input": query})
-
+        answer = generate_answer(st.session_state["vectorstore"], query)
         st.write("### Answer:")
-        st.write(response["answer"])
+        st.write(answer)
 
     except Exception as e:
-        st.error("Error: Check your HuggingFace API key or model access.")
+        st.error("Error: Check HuggingFace API key or model access.")
