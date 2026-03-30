@@ -50,12 +50,14 @@ def create_vectorstore(chunks):
     return FAISS.from_documents(chunks, embeddings)
 
 
+# 🔥 FIXED MODEL PIPELINE
 @st.cache_resource
 def load_model():
     return pipeline(
-        "text2text-generation",
-        model="google/flan-t5-base",   # 🔥 upgraded model
-        max_length=200
+        "text-generation",   # ✅ FIXED (no more error)
+        model="google/flan-t5-base",
+        max_length=200,
+        do_sample=False
     )
 
 
@@ -65,7 +67,7 @@ def generate_answer(vectorstore, query):
 
     retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
 
-    # ✅ FIXED (latest LangChain method)
+    # ✅ Latest LangChain method
     docs = retriever.invoke(query)
 
     if not docs:
@@ -88,6 +90,7 @@ Question: {query}
 """
 
     result = model(prompt)
+
     return result[0]["generated_text"]
 
 
@@ -120,7 +123,10 @@ if uploaded_files:
 
         st.success("✅ Resumes processed successfully!")
 
-# Chat section
+# ----------------------------
+# CHAT SECTION
+# ----------------------------
+
 st.divider()
 st.subheader("💬 Ask Questions")
 
